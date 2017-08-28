@@ -75,6 +75,8 @@ regardless of ``AUTHENTICATION_BACKENDS``.
     :class:`~django.contrib.auth.backends.AllowAllUsersRemoteUserBackend` if
     you want to allow them to.
 
+.. _remote-user-middleware-subclass-howto:
+
 If your authentication mechanism uses a custom HTTP header and not
 ``REMOTE_USER``, you can subclass ``RemoteUserMiddleware`` and set the
 ``header`` attribute to the desired ``request.META`` key.  For example::
@@ -123,3 +125,40 @@ provides support for this use case. It will maintain the authenticated session
 until explicit logout by the user. The class can be used as a drop-in
 replacement of :class:`~django.contrib.auth.middleware.RemoteUserMiddleware`
 in the documentation above.
+
+Smoke-testing ``REMOTE_USER`` authentication
+============================================
+
+In some situations, for example in a development environment, you may want to
+smoke-test ``REMOTE_USER`` authentication. For example, you might want to
+impersonate a user (by explicitly setting ``REMOTE_USER``) in order to perform
+manual quality-assurance testing.
+
+In such cases, you'll typically use the ``runserver`` command to launch a
+server locally on your development machine, and examine your app in a browser
+or using a CLI tool such as ``curl``.
+
+By design, ``REMOTE_USER`` is not a HTTP header, but a WSGI environment
+variable. :ref:`As documented <remote-user-middleware-subclass-howto>`, you can
+override ``REMOTE_USER`` and supply a custom HTTP header in its place, e.g.
+``HTTP_REMOTE_USER``.
+
+In order to smoke-test this custom middleware, you can now set the
+``Remote-User`` HTTP header in your HTTP request. Django will convert your
+``Remote-User`` header into ``HTTP_REMOTE_USER``  in the :attr:`request.META
+<django.http.HttpRequest.META>` attribute. Assuming your middleware is configured
+with this header, it should authenticate the supplied user and log you in.
+
+For example, in a Unix shell you might run:
+
+    curl -H 'Remote-User: jane' localhost:8000
+
+Assuming ``jane`` is a valid user, your middleware should authenticate you as
+``jane`` and log you in.
+
+.. note::
+
+    The ``runserver`` command will automatically strip all headers from the
+    request which contain the underscore character (``_``). Therefore, you
+    **cannot** set your header directly to ``REMOTE_USER``. You must use the
+    dash-separated form of the header when performing your tests.
